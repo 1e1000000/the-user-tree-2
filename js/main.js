@@ -275,19 +275,47 @@ addLayer("stat", {
             ],
             [ // exp
                 upgradeEffect('g',14),
-            ]
+            ],
         ]
+        let require = [
+            [ // multi
+                buyableGTE("main",11,2),
+                buyableGTE("main",11,3),
+                hasUpgrade('p',1),
+                hasUpgrade('p',2),
+                hasUpgrade('p',4),
+                hasUpgrade('p',5),
+                hasUpgrade('p',8),
+                hasUpgrade('p',15),
+                hasUpgrade('p',18),
+                hasUpgrade('p',30),
+                player.b.unlocked,
+                player.g.unlocked,
+            ],
+            [ // exp
+                hasUpgrade('g',14),
+            ],
+        ]
+        let amt = [0,0]
         let text = "<h2>Production breakdown</h2><br><h3>Points multiplier</h3>"
         text += "<br>Base points production: " + formatWhole(buyableGTE("main",11,1)?1:0) + "/s"
         for (let i=0;i<effectFrom[0].length-0.5;i++){
-            text += "<br>From " + effectFrom[0][i] + ": x" + format(effect[0][i])
+            if (require[0][i]){
+                text += "<br>From " + effectFrom[0][i] + ": x" + format(effect[0][i])
+                amt[0]++
+            }
         }
+        if (!amt[0]) text += "<br>Nothing multiply points gain yet..."
         text += "<br>" + "-".repeat(40)
         text += "<br>Total point gain multi: x" + format(getPointsGainMulti())
         text += "<br><br><h3>Points exponent</h3>"
         for (let i=0;i<effectFrom[1].length-0.5;i++){
-            text += "<br>From " + effectFrom[1][i] + ": ^" + format(effect[1][i],4)
+            if (require[1][i]){
+                text += "<br>From " + effectFrom[1][i] + ": ^" + format(effect[1][i],4)
+                amt[1]++
+            }
         }
+        if (!amt[1]) text += "<br>Nothing raise points gain yet..."
         text += "<br>" + "-".repeat(40)
         text += "<br>Total point gain exp: ^" + format(getPointsGainExp(),4) + "<br>"
         text += "<br>Total points generation: " + format(getPointGen()) + "/s"
