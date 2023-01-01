@@ -297,8 +297,7 @@ addLayer("stat", {
             ],
         ]
         let amt = [0,0]
-        let text = "<h2>Production breakdown</h2><br><h3>Points multiplier</h3>"
-        text += "<br>Base points production: " + formatWhole(buyableGTE("main",11,1)?1:0) + "/s"
+        let text = "<h2>Production breakdown</h2><br>Base points production: " + formatWhole(buyableGTE("main",11,1)?1:0) + "/s<br><br><h3>Points multiplier</h3>"
         for (let i=0;i<effectFrom[0].length-0.5;i++){
             if (require[0][i]){
                 text += "<br>From " + effectFrom[0][i] + ": x" + format(effect[0][i])
