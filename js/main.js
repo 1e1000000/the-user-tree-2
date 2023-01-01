@@ -58,7 +58,7 @@ addLayer("main", {
                     [new OmegaNum(1),new OmegaNum(10),new OmegaNum(1e10)]
                 ]
                 let display = "<h2>Jacorb effects:</h2>"
-                if (x==0) return "None"
+                if (x==0) return display + "<br>None"
                 if (x>=1) display += "<br>Produce 1 point per second"
                 if (x>=2) display += "<br>Points gain x" + format(array[0][x-1])
 
@@ -123,7 +123,7 @@ addLayer("main", {
                     [0,0,0,0,0,0,0], // max static
                 ]
                 let display = "<h2>Acamaeda effects:</h2>"
-                if (x==0) return "None"
+                if (x==0) return display + "<br>None"
                 if (x>=1) display += "<br>Unlock " + formatWhole(array[0][x]) + " layers"
                 if (x>=3) display += "<br>Automate " + formatWhole(array[1][x]) + " stuffs"
                 if (x>=6) display += "<br>Buy Max " + formatWhole(array[2][x]) + " static layer resources"
