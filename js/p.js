@@ -457,8 +457,9 @@ addLayer("p", {
             if (player.p.unlocked) max+=10
             if (player.b.unlocked) max+=10
             if (player.g.unlocked) max+=10
-            return Math.ceil(max/10)
+            return Math.floor((max+0.5)/10)
         },
+        maxRows: 100,
         cols: 10,
         getStartData(id){
             return true
