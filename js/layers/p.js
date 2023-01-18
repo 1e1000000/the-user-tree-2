@@ -5,6 +5,7 @@ addLayer("p", {
     startData() { return {
         unlocked: false,
 		points: new OmegaNum(0),
+        reduceColumn: false,
     }},
     color: "#31aeb0",
     requires: new OmegaNum(10), // Can be a function that takes requirement increases into account
@@ -27,10 +28,13 @@ addLayer("p", {
         if (hasUpgrade('b',14)) mult = mult.mul(upgradeEffect('b',14))
 
         if (hasUpgrade('g',11)) mult = mult.mul(upgradeEffect('g',11))
+
+        if (hasUpgrade('e',12)) mult = mult.mul(upgradeEffect('e',12))
         return mult
     },
     gainExp() { // Calculate the exponent on main currency from bonuses
         let exp = new OmegaNum(1)
+        if (buyableGTE("e",11,11)) exp = exp.mul(upgradeEffect('p',11).mul(100).root(2).div(100).add(1))
 
         return exp
     },
@@ -39,15 +43,29 @@ addLayer("p", {
         {key: "p", description: "P: Reset for prestige points", onPress(){if (canReset(this.layer)) doReset(this.layer)}},
     ],
     layerShown(){return player[this.layer].unlocked || buyableGTE("main",12,1)},
+    doReset(resettingLayer){
+        let keep = ["reduceColumn"]
+        if (layers[resettingLayer].row > this.row) layerDataReset(this.layer,keep)
+    },
     tabFormat:[
         "main-display",
         "prestige-button",
         "resource-display",
         ["display-text",function(){return "Reset time: " + formatTime(player.p.resetTime)}],
-        "blank","grid",
+        "clickables","blank","grid","blank",
     ],
     passiveGeneration(){
         return tmp.auto.clickables['p_Points'].isActivated?1:0
+    },
+    //RTPassiveGeneration: true, // Passively Generate Resource real-time instead of game-time
+    //RTLayer: true, // Layer run with real-time instead of game-time
+    //Both default to false
+    clickables:{
+        11:{
+            display(){return "Reduce Column of Prestige Upgrades to 5 " + (player.p.reduceColumn?"(ON)":"(OFF)")},
+            canClick(){return true},
+            onClick(){player.p.reduceColumn = Boolean(1-player.p.reduceColumn)},
+        }
     },
     upgrades:{
         1: {
@@ -68,13 +86,25 @@ addLayer("p", {
                 if (hasUpgrade('p',6)) eff[2] = eff[2].add(0.1)
                 if (hasUpgrade('p',11)) eff[2] = eff[2].add(upgradeEffect('p',11).mul(hasUpgrade('g',14)?3:1))
                 if (hasUpgrade('p',21)) eff[2] = eff[2].add(0.15)
+                if (buyableGTE("e",11,6)) eff[2] = eff[2].add(1)
 
                 eff[2] = eff[2].min(1)
+
+                let expEff = [new OmegaNum(0),new OmegaNum(10)] // max effect, time to max
+                if (buyableGTE("e",11,1)) expEff[0] = new OmegaNum(0.5)
+                if (buyableGTE("e",11,3)) expEff[0] = expEff[0].mul(1.5)
+
+                if (buyableGTE("e",11,3)) expEff[1] = expEff[1].mul(1.5)
+                if (buyableGTE("e",11,6)) expEff[1] = expEff[1].div(1.25)
 
                 let t = new OmegaNum(player.p.resetTime)
                 let decayRate = t.div(eff[1]).min(1)
                 if (hasUpgrade('b',14)) decayRate = decayRate.pow(2)
-                let curr = new OmegaNum(1).sub(decayRate).add(eff[2].mul(decayRate)).mul(eff[0])
+                let incRate = t.div(expEff[1]).min(1)
+
+                let mult = new OmegaNum(1).sub(decayRate).add(eff[2].mul(decayRate)).mul(eff[0])
+                let exp = new OmegaNum(1).add(incRate.mul(expEff[0]))
+                let curr = expSoftcap(mult.pow(exp),new OmegaNum(1e100),0.5)
                 return {eff:eff,curr:curr}
             },
             cost: new OmegaNum(1),
@@ -87,10 +117,12 @@ addLayer("p", {
             effect(){
                 let effBase = new OmegaNum(1)
                 if (hasUpgrade('p',10)) effBase = effBase.add(upgradeEffect('p',10)[1])
+                if (hasUpgrade('p',31)) effBase = effBase.add(upgradeEffect('p',31))
 
                 let eff = effBase.mul(player.p.upgrades.length).add(1)
                 if (hasUpgrade('p',13)) eff = eff.pow(upgradeEffect('p',13))
                 if (hasUpgrade('p',27)) eff = eff.pow(upgradeEffect('p',27))
+                if (buyableGTE("e",11,2)) eff = eff.pow(player.p.upgrades.length/50+1)
                 return {base: effBase, eff: eff}
             },
             cost: new OmegaNum(20),
@@ -115,7 +147,10 @@ addLayer("p", {
             effect(){
                 let eff = new OmegaNum(1.7)
                 if (hasUpgrade('p',26)) eff = OmegaNum.pow(10,eff)
-                if (hasUpgrade('p',16)) eff = eff.pow(upgradeEffect('p',16))
+                if (buyableGTE("e",11,4)) eff = OmegaNum.pow(10,eff)
+                if (!buyableGTE("e",11,4)){
+                    if (hasUpgrade('p',16)) eff = eff.pow(upgradeEffect('p',16))
+                }
                 return eff
             },
             cost: new OmegaNum(150),
@@ -129,6 +164,7 @@ addLayer("p", {
                 let eff = player.p.points.add(10).log10()
                 if (hasUpgrade('p',20)) eff = eff.max(powExp(player.p.points,upgradeEffect('p',20)))
                 if (hasUpgrade('b',12)) eff = eff.pow(upgradeEffect('b',12))
+                if (buyableGTE("e",11,5)) eff = eff.pow(getBuyableAmount('e',11).div(10).add(1))
                 return eff
             },
             cost: new OmegaNum(500),
@@ -152,7 +188,10 @@ addLayer("p", {
             effect(){
                 let eff = new OmegaNum(1.81)
                 if (hasUpgrade('p',26)) eff = OmegaNum.pow(10,eff)
-                if (hasUpgrade('p',16)) eff = eff.pow(upgradeEffect('p',16))
+                if (buyableGTE("e",11,7)) eff = OmegaNum.pow(10,eff)
+                if (!buyableGTE("e",11,7)){
+                    if (hasUpgrade('p',16)) eff = eff.pow(upgradeEffect('p',16))
+                }
                 return eff
             },
             cost: new OmegaNum(1500),
@@ -165,7 +204,7 @@ addLayer("p", {
             effect(){
                 let eff = player.points.add(10).log10()
                 if (hasUpgrade('p',17)){
-                    if (player.points.gte(1e100)) eff = player.points.add(10).log10().pow(5)
+                    if (player.points.gte(1e100)) eff = buyableGTE("e",11,8)?powExp(player.points,0.5):player.points.add(10).log10().pow(5)
                     else if (player.points.gte(1e10)) eff = player.points.add(1).pow(0.1)
                     else eff = player.points.add(10).log10()
                 }
@@ -183,9 +222,11 @@ addLayer("p", {
                 let effBase = new OmegaNum(0.1)
                 if (hasUpgrade('p',22)) effBase = effBase.add(upgradeEffect('p',22))
                 if (hasUpgrade('p',30)) effBase = effBase.add(upgradeEffect('p',30)[0])
+                if (hasUpgrade('p',40)) effBase = effBase.add(upgradeEffect('p',40))
 
                 let eff = effBase.mul(player.p.upgrades.length).add(1)
                 if (hasUpgrade('p',16)) eff = eff.pow(upgradeEffect('p',16))
+                if (buyableGTE("e",11,9)) eff = eff.pow(new OmegaNum(player.p.upgrades.length).add(1).pow(0.5))
 
                 let eff2 = new OmegaNum(1)
                 if (hasUpgrade('p',22)) eff2 = effBase.add(1).pow(player.p.upgrades.length)
@@ -200,6 +241,7 @@ addLayer("p", {
             description(){return "Multiply PP gain by " + format(this.effect()[0]) + " and increase Upgrade 2 effect base by " + format(this.effect()[1].mul(100).round()) + "%"},
             effect(){
                 let eff = [new OmegaNum(4.06),new OmegaNum(4.06)]
+                if (buyableGTE("e",11,10) && hasUpgrade('p',16)) eff[0] = eff[0].pow(upgradeEffect('p',16))
                 if (hasUpgrade('p',26)) eff[0] = OmegaNum.pow(10,eff[0])
                 if (hasUpgrade('p',26)) eff[1] = eff[1].pow(2)
                 return eff
@@ -229,6 +271,7 @@ addLayer("p", {
             description(){return "Multiply PP gain based on PP, currently: " + format(this.effect()) + "x"},
             effect(){
                 let eff = player.p.points.add(10).log10()
+                if (buyableGTE("e",11,12)) eff = eff.max(powExp(player.p.points.max(1),0.35))
                 if (hasUpgrade('g',12)) eff = eff.pow(upgradeEffect('g',12))
                 return eff
             },
@@ -252,6 +295,7 @@ addLayer("p", {
             description(){return "Increase the buff of Upgrade 3 based on boosters, currently: +" + format(this.effect())},
             effect(){
                 let eff = player.b.points
+                if (hasUpgrade('p',33)) eff = eff.pow(upgradeEffect('p',33))
                 return eff
             },
             cost: new OmegaNum(111111111111),
@@ -437,7 +481,125 @@ addLayer("p", {
             canAfford(){return player.g.unlocked},
             type: "empty"
         },
-        // next upgrade cost: ???
+        31: {
+            title: "demonicRiddle",
+            description(){return "Increase Upgrade 2 base by " + format(this.effect().mul(100)) + "% (based on Enhance Points)"},
+            effect(){
+                let eff = player.e.points.add(1).log10().mul(100)
+                if (eff.gte(100)) eff = eff.div(100).pow(0.5).mul(100)
+                return eff
+            },
+            cost: new OmegaNum(1e187),
+            canAfford(){return player.e.unlocked},
+            type: "playable"
+        },
+        32: {
+            title: "jokre33",
+            description(){return "Increase Generator base by " + format(this.effect()) + " (based on Enhance Points)"},
+            effect(){
+                let eff = player.e.points.add(1).log10()
+                if (eff.gte(10)) eff = eff.div(10).pow(0.5).mul(10)
+                return eff
+            },
+            cost: new OmegaNum("1e338"),
+            canAfford(){return player.e.unlocked},
+            type: "playable"
+        },
+        33: {
+            title: "meme0846",
+            description(){return "Raise Upgrade 14 effect by " + format(this.effect()) + ""},
+            effect(){
+                let eff = new OmegaNum(8.46)
+                return eff
+            },
+            cost: new OmegaNum("8.46001e392"),
+            canAfford(){return player.e.unlocked},
+            type: "playable"
+        },
+        34: {
+            title: "Pyrocon",
+            description(){return "For every " + format(OmegaNum.pow(2,1024)) + "x of product of Points and PP, increase enhance points gain by " + format(this.effect().base.mul(100)) + "%, currently: " + format(this.effect().eff) + "x"},
+            effect(){
+                let effBase = new OmegaNum(1)
+
+                let x = player.points.max(1).mul(player.p.points.max(1))
+
+                let eff = effBase.mul(x.logBase(OmegaNum.pow(2,1024)).floor()).add(1)
+                eff = eff.pow(2)
+                return {base: effBase, eff: eff, amt: x}
+            },
+            cost: new OmegaNum(2).pow(2048),
+            canAfford(){return player.e.unlocked},
+            type: "empty"
+        },
+        35: {
+            title: "flammehawk",
+            description(){return "Boosters effect multiply Generator Power gain, currently: " + format(this.effect()) + "x"},
+            effect(){
+                let eff = tmp.b.effect?tmp.b.effect.pow(1/4):new OmegaNum(1)
+                return eff
+            },
+            cost: new OmegaNum("1e650"),
+            canAfford(){return player.e.unlocked},
+            type: "empty"
+        },
+        36: {
+            title: "JimboSausage",
+            description(){return "Multiply Enhance Points gain based on Prestige Points, currently: " + format(this.effect()) + "x"},
+            effect(){
+                let eff = player.p.points.max(10).log10().pow(0.5)
+                return eff
+            },
+            cost: new OmegaNum("1e835"),
+            canAfford(){return player.e.unlocked},
+            type: "empty"
+        },
+        37: {
+            title: "c0v1d-9119361",
+            description(){return "Multiply Enhance Points gain by " + format(this.effect(),4) + ""},
+            effect(){
+                let eff = new OmegaNum(911.9361)
+                return eff
+            },
+            cost: new OmegaNum("9.361e925"),
+            canAfford(){return player.e.unlocked},
+            type: "playable"
+        },
+        38: {
+            title: "SandKingg",
+            description(){return "Increase 'B to G' effect exponent by " + format(this.effect(),3) + ""},
+            effect(){
+                let eff = new OmegaNum(0.575-1/3)
+                return eff
+            },
+            cost: new OmegaNum("e1008"),
+            canAfford(){return player.e.unlocked},
+            type: "playable"
+        },
+        39: {
+            title: "DioiD-Pissman",
+            description(){return "'Point boost' and 'Prestige boost' softcap starts " + format(this.effect()) + "x later"},
+            effect(){
+                let eff = new OmegaNum(1e150)
+                return eff
+            },
+            cost: new OmegaNum("e1125"),
+            canAfford(){return player.e.unlocked},
+            type: "playable"
+        },
+        40: {
+            title: "thebroziscool",
+            description(){return "Increase Upgrade 9 base by " + format(this.effect().mul(100)) + "% (based on Enhance Points)"},
+            effect(){
+                let eff = player.e.points.max(1).log10().pow(2.3).div(100)
+                return eff
+            },
+            cost: new OmegaNum("e1420"),
+            canAfford(){return player.e.unlocked},
+            type: "empty"
+        },
+        // next upgrade cost: 1e1420
+        // goal: 1e1500 PP
         /*number: {
             title: "username",
             description(){return "effect, currently: " + format(this.effect())},
@@ -457,32 +619,36 @@ addLayer("p", {
             if (player.p.unlocked) max+=10
             if (player.b.unlocked) max+=10
             if (player.g.unlocked) max+=10
-            return Math.floor((max+0.5)/10)
+            if (player.e.unlocked) max+=10
+            return Math.ceil((max-0.5)/(player.p.reduceColumn?5:10))
         },
         maxRows: 100,
-        cols: 10,
+        cols(){
+            return player.p.reduceColumn?5:10
+        },
+        maxCols: 10,
         getStartData(id){
             return true
         },
         getDisplay(data,id){
-            let x = convertGridToNum(id).toString()
-            return "<b style='font-size:16px;'>" + x + "</b><br><br>" + (tmp.p.upgrades[x]?tmp.p.upgrades[x].title:"???")
+            let x = convertGridToNum(id,player.p.reduceColumn?5:10).toString()
+            return "<b style='font-size:18px;'>" + x + "</b><br><br>" + (tmp.p.upgrades[x]?tmp.p.upgrades[x].title:"???") + (tmp.p.upgrades[x]?(tmp.p.upgrades[x].title.length<=12?"<br>":""):"<br>")
         },
         getTooltip(data,id){
-            let x = convertGridToNum(id).toString()
+            let x = convertGridToNum(id,player.p.reduceColumn?5:10).toString()
             return (tmp.p.upgrades[x]?tmp.p.upgrades[x].description:"???") + "<br><br>" + 
             "Cost: " + formatWhole(tmp.p.upgrades[x]?tmp.p.upgrades[x].cost:1/0) + " PP"
         },
         getCanClick(data,id){
-            let x = convertGridToNum(id).toString()
+            let x = convertGridToNum(id,player.p.reduceColumn?5:10).toString()
             return tmp.p.upgrades[x] && canAffordUpgrade('p', x) && !player.p.upgrades.includes(x)
         },
         onClick(data,id){
-            let x = convertGridToNum(id).toString()
+            let x = convertGridToNum(id,player.p.reduceColumn?5:10).toString()
             if (tmp.p.upgrades[x]) buyUpgrade('p', x)
         },
         getStyle(data,id){
-            let x = convertGridToNum(id).toString()
+            let x = convertGridToNum(id,player.p.reduceColumn?5:10).toString()
             let color = '#bf8f8f'
             if (tmp.p.upgrades[x] && canAffordUpgrade('p', x)) color = '#31aeb0'
             if (player.p.upgrades.includes(x)){

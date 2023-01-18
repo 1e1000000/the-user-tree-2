@@ -46,9 +46,9 @@ addLayer("main", {
                     "???",
                 ]
 
-                let disp = "Current version:<br>" + ver + " (" + formatWhole(player[this.layer].buyables[this.id]) + ")" + "<br><br>"
-                disp += "Next Level effect:<br>" + eff[x] + "<br><br>"
-                disp += "Require for next level:<br>" + format(this.cost()) + " points"
+                let disp = "<b>Current version</b><br>" + ver + " (" + formatWhole(player[this.layer].buyables[this.id]) + ")" + "<br><br>"
+                disp += "<b>Next Level effect</b><br>" + eff[x] + "<br><br>"
+                disp += "<b>Require for next level</b><br>" + format(this.cost()) + " points"
 
                 return disp
             },
@@ -77,7 +77,7 @@ addLayer("main", {
             title: "Acamaeda",
             cost(x){
                 let cost = [
-                    0,10,15,20,26,30,
+                    0,10,15,20,26,30,31,
                     1.79769e308,
                 ][x.toNumber()]
                 return cost
@@ -105,22 +105,23 @@ addLayer("main", {
                     "Unlock an automation for Prestige Upgrades",
                     "Unlock Generator",
                     "Unlock an automation for Prestige Points",
-                    "Unlock a new layer, the cost of the first generator is now same as the first booster (1e40 -> 1e6)",
+                    "Unlock a new layer, the cost of the first generator is now same as the first booster (1e40 -> 1e6), you can buy max Boosters and Generators after first Enhance reset",
+                    "Unlock an automation for Boosters and Generators",
                     "???",
                 ]
 
-                let disp = "Current version:<br>" + ver + " (" + formatWhole(player[this.layer].buyables[this.id]) + ")" + "<br><br>"
-                disp += "Next Level effect:<br>" + eff[x] + "<br><br>"
-                disp += "Require for next level:<br>" + formatWhole(this.cost()) + " prestige upgrades"
+                let disp = "<b>Current version</b><br>" + ver + " (" + formatWhole(player[this.layer].buyables[this.id]) + ")" + "<br><br>"
+                disp += "<b>Next Level effect</b><br>" + eff[x] + "<br><br>"
+                disp += "<b>Require for next level</b><br>" + formatWhole(this.cost()) + " prestige upgrades"
 
                 return disp
             },
             allEffect(){
                 let x = player[this.layer].buyables[this.id].toNumber()
                 let array = [
-                    [0,1,2,2,3,3,3], // layers
-                    [0,0,0,1,1,2,2], // automations
-                    [0,0,0,0,0,0,0], // max static
+                    [0,1,2,2,3,3,4,4], // layers
+                    [0,0,0,1,1,2,2,4], // automations
+                    [0,0,0,0,0,0,(player.e.unlocked?2:0),2], // max static
                 ]
                 let display = "<h2>Acamaeda effects:</h2>"
                 if (x==0) return display + "<br>None"
@@ -151,6 +152,8 @@ addLayer("auto", {
         unlocked: true,
         p_Upgs: false,
         p_Points: false,
+        b_Points: false,
+        g_Points: false,
     }},
     color: "#ffff00",
     type: "none", // normal: cost to gain currency depends on amount gained. static: cost depends on how much you already have
@@ -158,8 +161,14 @@ addLayer("auto", {
     tooltip: "Autobuyers",
     layerShown(){return buyableGTE("main",12,3)},
     tabFormat:[
-        ["display-text",function(){return "<h2>Prestige</h2>"}],
+        ["display-text",function(){return buyableGTE("main",12,3)?"<h2>Prestige</h2>":""}],
         ["row",[["clickable","p_Upgs"],"blank",["clickable","p_Points"]]],
+        "blank",
+        ["display-text",function(){return buyableGTE("main",12,7)?"<h2>Booster</h2>":""}],
+        ["row",[["clickable","b_Points"]]],
+        "blank",
+        ["display-text",function(){return buyableGTE("main",12,7)?"<h2>Generator</h2>":""}],
+        ["row",[["clickable","g_Points"]]],
         "blank",
     ],
     clickables:{
@@ -172,7 +181,7 @@ addLayer("auto", {
                 return buyableGTE("main",12,3)
             },
             canActive(){
-                return player.b.best.gte(6)
+                return player.b.best.gte(6) || player.e.unlocked
             },
             canClick(){
                 return buyableGTE("main",12,3) && this.canActive()
@@ -196,7 +205,7 @@ addLayer("auto", {
                 return buyableGTE("main",12,5)
             },
             canActive(){
-                return player.g.best.gte(13)
+                return player.g.best.gte(13) || player.e.unlocked
             },
             canClick(){
                 return buyableGTE("main",12,5) && this.canActive()
@@ -209,6 +218,54 @@ addLayer("auto", {
             },
             style(){
                 return {'background-color':'#31aeb0'}
+            },
+        },
+        b_Points:{
+            title: "Boosters",
+            display(){
+                return !this.canActive()?"Require 80 best enhance points":(player.auto[this.id]?"ON":"OFF")
+            },
+            unlocked(){
+                return buyableGTE("main",12,7)
+            },
+            canActive(){
+                return player.e.best.gte(80)
+            },
+            canClick(){
+                return buyableGTE("main",12,7) && this.canActive()
+            },
+            isActivated(){
+                return player.auto[this.id] && this.canActive()
+            },
+            onClick(){
+                player.auto[this.id] = Boolean(1-player.auto[this.id])
+            },
+            style(){
+                return {'background-color':'#6e64c4'}
+            },
+        },
+        g_Points:{
+            title: "Generators",
+            display(){
+                return !this.canActive()?"Require 80 best enhance points":(player.auto[this.id]?"ON":"OFF")
+            },
+            unlocked(){
+                return buyableGTE("main",12,7)
+            },
+            canActive(){
+                return player.e.best.gte(80)
+            },
+            canClick(){
+                return buyableGTE("main",12,7) && this.canActive()
+            },
+            isActivated(){
+                return player.auto[this.id] && this.canActive()
+            },
+            onClick(){
+                player.auto[this.id] = Boolean(1-player.auto[this.id])
+            },
+            style(){
+                return {'background-color':'#a3d9a5'}
             },
         },
     },
@@ -237,6 +294,7 @@ addLayer("stat", {
         ["display-text",function(){
             return tmp.stat.getPrestigeResources
         }],
+        "blank","blank",
     ],
     getPointProductionBreakdown(){
         let effectFrom = [
@@ -252,7 +310,8 @@ addLayer("stat", {
                 "Prestige Upgrade 18",
                 "Prestige Upgrade 30",
                 "Boosters",
-                "Generator Power"
+                "Generator Power",
+                "Enhance Upgrade 'Point boost'"
             ],
             [ // exp
                 "Generator Upgrade 'PU11 boost'"
@@ -272,6 +331,7 @@ addLayer("stat", {
                 upgradeEffect('p',30)[1],
                 tmp.b.effect,
                 tmp.g.effect.eff,
+                upgradeEffect('e',11),
             ],
             [ // exp
                 upgradeEffect('g',14),
@@ -291,6 +351,7 @@ addLayer("stat", {
                 hasUpgrade('p',30),
                 player.b.unlocked,
                 player.g.unlocked,
+                hasUpgrade('e',11),
             ],
             [ // exp
                 hasUpgrade('g',14),
@@ -321,11 +382,11 @@ addLayer("stat", {
         return text
     },
     getPrestigeResources(){
-        let resName = [" prestige points"," boosters"," generators"]
-        let resID = ["p","b","g"]
+        let resName = ["prestige points","boosters","generators", "enhance points"]
+        let resID = ["p","b","g","e"]
         let text = "<h2>Prestige Resources</h2>"
         for (let i=0;i<resName.length-0.5;i++){
-            if (player[resID[i]].unlocked) text += "<br>You have " + formatWhole(player[resID[i]].points) + resName[i]
+            if (player[resID[i]].unlocked) text += "<br>You have " + formatWhole(player[resID[i]].points) + " " + resName[i]
         }
         return text
     },

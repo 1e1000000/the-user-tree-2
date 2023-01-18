@@ -25,13 +25,15 @@ function getResetGain(layer, useType = null) {
 	if (tmp[layer].gainExp.eq(0)) return OmegaNumZero
 	if (type=="static") {
 		if ((!tmp[layer].canBuyMax) || tmp[layer].baseAmount.lt(tmp[layer].requires)) return OmegaNumOne
-		let gain = tmp[layer].baseAmount.div(tmp[layer].requires).div(tmp[layer].gainMult).max(1).log(tmp[layer].base).times(tmp[layer].gainExp).pow(OmegaNum.pow(tmp[layer].exponent, -1))
+		let gain = tmp[layer].baseAmount.div(tmp[layer].requires).div(tmp[layer].gainMult).max(1).logBase(tmp[layer].base).times(tmp[layer].gainExp).pow(OmegaNum.pow(tmp[layer].exponent, -1))
 		gain = gain.times(tmp[layer].directMult)
 		return gain.floor().sub(player[layer].points).add(1).max(1);
 	} else if (type=="normal"){
 		if (tmp[layer].baseAmount.lt(tmp[layer].requires)) return OmegaNumZero
 		let gain = tmp[layer].baseAmount.div(tmp[layer].requires).pow(tmp[layer].exponent).times(tmp[layer].gainMult).pow(tmp[layer].gainExp)
+		gain = OmegaNum.pow(10,gain.max(1).log10().pow(tmp[layer].gainExpExp))
 		if (gain.gte(tmp[layer].softcap)) gain = gain.pow(tmp[layer].softcapPower).times(tmp[layer].softcap.pow(OmegaNumOne.sub(tmp[layer].softcapPower)))
+		if (gain.gte(tmp[layer].expSoftcap)) gain = OmegaNum.pow(10,gain.log10().pow(tmp[layer].expSoftcapPower).times(tmp[layer].expSoftcap.log10().pow(OmegaNumOne.sub(tmp[layer].expSoftcapPower))))
 		gain = gain.times(tmp[layer].directMult)
 		return gain.floor().max(0);
 	} else if (type=="custom"){
@@ -79,6 +81,12 @@ function softcap(value, cap, power = 0.5) {
 	if (value.lte(cap)) return value
 	else
 		return value.pow(power).times(cap.pow(OmegaNumOne.sub(power)))
+}
+
+function expSoftcap(value, cap, power = 0.5) {
+	if (value.lte(cap)) return value
+	else
+		return OmegaNum.pow(10,value.log10().pow(power).times(cap.log10().pow(OmegaNumOne.sub(power))))
 }
 
 // Return true if the layer should be highlighted. By default checks for upgrades only.
@@ -346,14 +354,18 @@ function gameLoop(diff) {
 			diff = limit
 	}
 	addTime(diff)
-	player.points = player.points.add(tmp.pointGen.times(diff)).max(0)
+
+	// game speed
+	let diffSpeed = new OmegaNum(diff).mul(getGameSpeed())
+
+	player.points = player.points.add(tmp.pointGen.times(diffSpeed)).max(0)
 
 	for (let x = 0; x <= maxRow; x++){
 		for (item in TREE_LAYERS[x]) {
 			let layer = TREE_LAYERS[x][item]
 			player[layer].resetTime += diff
-			if (tmp[layer].passiveGeneration) generatePoints(layer, diff*tmp[layer].passiveGeneration);
-			if (layers[layer].update) layers[layer].update(diff);
+			if (tmp[layer].passiveGeneration) generatePoints(layer, new OmegaNum(tmp[layer].passiveGeneration).mul(layers[layer].RTPassiveGeneration?diff:diffSpeed));
+			if (layers[layer].update) layers[layer].update(layers[layer].RTLayer?diff:diffSpeed);
 		}
 	}
 
@@ -361,8 +373,8 @@ function gameLoop(diff) {
 		for (item in OTHER_LAYERS[row]) {
 			let layer = OTHER_LAYERS[row][item]
 			player[layer].resetTime += diff
-			if (tmp[layer].passiveGeneration) generatePoints(layer, diff*tmp[layer].passiveGeneration);
-			if (layers[layer].update) layers[layer].update(diff);
+			if (tmp[layer].passiveGeneration) generatePoints(layer, new OmegaNum(tmp[layer].passiveGeneration).mul(layers[layer].RTPassiveGeneration?diff:diffSpeed));
+			if (layers[layer].update) layers[layer].update(layers[layer].RTLayer?diff:diffSpeed);
 		}
 	}	
 

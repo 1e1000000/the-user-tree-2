@@ -3,7 +3,10 @@ let modInfo = {
 	id: "user2",
 	author: "F1e308",
 	pointsName: "points",
-	modFiles: ["math.js","main.js","p.js","b.js","g.js","tree.js"],
+	modFiles: ["math.js","layers/sideLayers.js",
+	"layers/p.js","layers/b.js","layers/g.js",
+	"layers/e.js",
+	"tree.js"],
 
 	discordName: "",
 	discordLink: "",
@@ -13,14 +16,20 @@ let modInfo = {
 
 // Set your version in num and name
 let VERSION = {
-	num: "0.1",
-	name: "Initial Release",
+	num: "0.2",
+	name: "Row 3",
 }
 
 let changelog = `<h1>Changelog:</h1><br>
-	<h3>v0.1</h3><br>
+	<br><h1>v0.2</h1><br>
+		- Added a layers, 10 more prestige upgrades.<br>
+		- You can reduce the upgrade column to 5.<br>
+		- Some technical changes, including the addition of game speed modifier, power exponent softcap.<br>
+		- Fixed bulking Static Layer.<br>
+		- Endgame is increased to <b>1e1,625</b> points (1e1,500 prestige points).<br>
+	<br><h1>v0.1</h1><br>
 		- Added 3 layers, 30 prestige upgrades.<br>
-		- Endgame is set at 1e200 points.<br>`
+		- Endgame is set at <b>1e200</b> points.<br>`
 
 let winText = `Congratulations! You have reached the end and beaten this game, but for now...`
 
@@ -51,6 +60,7 @@ function getPointsGainMulti(){
 	if (hasUpgrade('p',30)) multi = multi.mul(upgradeEffect('p',30)[1])
 	if (player.b.unlocked) multi = multi.mul(tmp.b.effect)
 	if (player.g.unlocked) multi = multi.mul(tmp.g.effect.eff)
+	if (hasUpgrade('e',11)) multi = multi.mul(upgradeEffect('e',11))
 
 	return multi
 }
@@ -74,6 +84,11 @@ function getPointGen() {
 	return gain
 }
 
+function getGameSpeed(){
+	let speed = new OmegaNum(1)
+	return speed
+}
+
 // You can add non-layer related variables that should to into "player" and be saved here, along with default values
 function addedPlayerData() { return {
 }}
@@ -81,13 +96,15 @@ function addedPlayerData() { return {
 // Display extra things at the top of the page
 var displayThings = [
 	function(){
-		return "Current Endgame: " + format(1e200) + " points (" + format(slogadd(player.points.max(1),-1).div(200).min(1).mul(100)) + "%)"
+		if (false) return "Current Endgame: ??? points (0.00%)"
+		return "Current Endgame: <b>" + format("1e1500") + "</b> prestige points (<b>" + format(slogadd(player.p.points.max(1),-1).div(1500).min(1).mul(100)) + "%</b>)<br>3.5e39 enhance points and e1,625 points"
+		+ (getGameSpeed().neq(1)?"<br><br>Game speed: <b>" + format(getGameSpeed()) + "</b>x (doesn't affect prestige time)":"")
 	}
 ]
 
 // Determines when the game "ends"
 function isEndgame() {
-	return player.points.gte(1e200)
+	return player.p.points.gte(slogadd(1500,1))
 }
 
 
